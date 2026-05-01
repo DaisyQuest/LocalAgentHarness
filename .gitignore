@@ -1,0 +1,52 @@
+# ── python ────────────────────────────────────
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ── build artifacts ───────────────────────────
+build/
+src/localagent/server/static/
+
+# ── local data + secrets ──────────────────────
+.env
+.env.local
+.env.*.local
+*.db
+*.sqlite
+*.sqlite3
+data/
+.localagent/
+
+# ── logs ──────────────────────────────────────
+*.log
+backend.log
+backend.err.log
+frontend.log
+frontend.err.log
+ollama-serve.log
+ollama-serve.err.log
+pull-*.log
+pull-*.err.log
+
+# ── web frontend ──────────────────────────────
+web/node_modules/
+web/dist/
+web/*.tsbuildinfo
+**/*.tsbuildinfo
+
+# ── design review artifacts ───────────────────
+.review-shots/
+.playwright-mcp/
+
+# ── editor / OS / agent ───────────────────────
+.vscode/
+.idea/
+.claude/
+.DS_Store
+Thumbs.db
+*.swp
