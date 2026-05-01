@@ -473,7 +473,6 @@ Toggle themes from the floating picker. Useful for design review and screenshot 
 ## 🙏 Acknowledgments
 
 - **[Ollama](https://ollama.com)** — the local-LLM runtime that makes this possible
-- **[Anthropic](https://anthropic.com)** — for the design patterns this harness borrows from Claude Code (lazy tool schemas, must-Read-first edits, project-context auto-loading)
 - **[sqlite-vec](https://github.com/asg017/sqlite-vec)** — embedded vector search without the operational burden
 - **[Tailwind](https://tailwindcss.com)**, **[React](https://react.dev)**, **[FastAPI](https://fastapi.tiangolo.com)**, **[Typer](https://typer.tiangolo.com)**, **[Textual](https://textual.textualize.io)** — the frontend + backend toolkit
 
