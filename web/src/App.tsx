@@ -17,6 +17,20 @@ function isShowcase(): boolean {
   return sp.get("showcase") === "spec";
 }
 
+const CHAT_EXAMPLES = [
+  "Explain the difference between L1 and L2 cache to a junior dev",
+  "Write a Python function that flattens a nested dict",
+  "Summarize: what's the deal with WebGPU?",
+  "Help me debug: my Tailwind dark variant isn't applying",
+];
+
+const AGENT_EXAMPLES = [
+  "Find any TODO comments in src/ and group them by file",
+  "Add a /health endpoint to the FastAPI app and verify it returns 200",
+  "Audit pyproject.toml — flag pinned versions older than 6 months",
+  "Find dead Python imports across src/ and report which files",
+];
+
 type AgentEvent =
   | { type: "reframe"; reframe: any }
   | { type: "clarification_needed"; ambiguity: number; question: string; assumptions: string[] }
@@ -132,11 +146,14 @@ function MainApp({ theme, setTheme }: { theme: any; setTheme: any }) {
       />
       <main className="flex-1 flex flex-col">
         <header className="border-b border-ink-700 px-6 py-3 flex items-center gap-3 bg-ink-900/40 backdrop-blur">
-          <div className="font-semibold tracking-tight text-lg">
-            <span className="text-accent">Local</span>Agent
+          <div className="font-semibold tracking-tight text-lg flex items-baseline">
+            <span className="text-accent">Local</span><span>Agent</span>
+            <span className="text-[10px] uppercase tracking-[0.12em] text-fg-dim font-mono ml-2">v0.3</span>
           </div>
-          <span className="text-xs text-fg-dim">v0.3</span>
-          <span className="text-xs text-fg-dim ml-2 capitalize">· {panel}</span>
+          <span className="text-fg-dim text-xs" aria-hidden>›</span>
+          <span className="text-xs text-fg-mute font-medium uppercase tracking-[0.08em]">
+            {panel === "rag" ? "RAG" : panel}
+          </span>
           <div className="flex-1" />
           <ThemeSwitcher value={theme} onChange={setTheme} />
           {panel === "chat" && (
@@ -179,9 +196,33 @@ function MainApp({ theme, setTheme }: { theme: any; setTheme: any }) {
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
               <div className="max-w-3xl mx-auto space-y-4">
                 {items.length === 0 && (
-                  <div className="text-center text-fg-dim mt-24">
-                    <div className="text-2xl font-semibold text-fg mb-2">welcome.</div>
-                    <div>ask a question, or switch to <span className="text-accent-soft">agent</span> mode.</div>
+                  <div className="mt-20 mx-auto max-w-2xl space-y-6 animate-slide-up">
+                    <div className="text-center">
+                      <div className="text-3xl font-semibold tracking-tight">
+                        <span className="text-accent">Local</span>Agent
+                      </div>
+                      <div className="text-sm text-fg-mute mt-1.5">
+                        {mode === "chat"
+                          ? "Streaming chat with router-classified models, RAG, and long-term memory."
+                          : "Agentic mode — planner-executor with reframe / critique / done-check."}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.12em] text-fg-dim mb-2 text-center">
+                        try
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        {(mode === "chat" ? CHAT_EXAMPLES : AGENT_EXAMPLES).map((ex) => (
+                          <button key={ex} onClick={() => setInput(ex)}
+                            className="text-left p-3 rounded-lg border border-ink-700 hover:border-accent/40 hover:bg-ink-800/60 transition group">
+                            <span className="text-sm text-fg-mute group-hover:text-fg leading-snug">{ex}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="text-center text-xs text-fg-dim">
+                      Or open <button onClick={() => setPanel("spec")} className="text-accent-soft hover:text-accent underline underline-offset-2 decoration-accent/40 hover:decoration-accent transition">spec mode</button> for ironclad acceptance-tested chunks.
+                    </div>
                   </div>
                 )}
                 {items.map((it, i) =>
@@ -203,11 +244,22 @@ function MainApp({ theme, setTheme }: { theme: any; setTheme: any }) {
 function Sidebar({ conversations, cid, onLoad, onNew, onDelete, panel, onPanel }: any) {
   return (
     <aside className="w-64 shrink-0 border-r border-ink-700 bg-ink-900/60 backdrop-blur p-3 flex flex-col">
-      <button onClick={onNew} className="w-full mb-3 px-3 py-2 rounded-lg bg-accent hover:bg-accent-soft transition text-white font-medium shadow-glow">
-        + new chat
+      <button onClick={onNew}
+        className="w-full mb-3 px-3 py-2 rounded-lg border border-accent/40 bg-accent/5 hover:bg-accent/15 hover:border-accent transition text-accent-soft hover:text-fg font-medium text-sm flex items-center justify-center gap-1.5">
+        <span aria-hidden>+</span> new chat
       </button>
-      <div className="text-xs uppercase tracking-wider text-fg-dim mb-1 px-1">conversations</div>
-      <div className="flex-1 overflow-y-auto space-y-1">
+      <div className="text-[10px] uppercase tracking-[0.12em] text-fg-dim mb-1.5 px-1 flex items-center justify-between">
+        <span>conversations</span>
+        {conversations.length > 0 && (
+          <span className="font-mono text-fg-dim/70 tabular-nums">{conversations.length}</span>
+        )}
+      </div>
+      <div className={`overflow-y-auto space-y-1 ${conversations.length > 0 ? "flex-1" : ""}`}>
+        {conversations.length === 0 && (
+          <div className="text-xs text-fg-dim px-1 py-2 leading-relaxed">
+            No conversations yet — start one with <kbd className="font-mono text-[10px] px-1 py-px rounded bg-ink-800 border border-ink-700">+ new chat</kbd>
+          </div>
+        )}
         {conversations.map((c: any) => (
           <div key={c.id} className={`group flex items-center rounded-lg transition ${
               cid === c.id ? "bg-ink-700 text-fg ring-1 ring-accent/30" : "hover:bg-ink-800 text-fg-mute"
@@ -217,7 +269,8 @@ function Sidebar({ conversations, cid, onLoad, onNew, onDelete, panel, onPanel }
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); if (confirm(`delete "${c.title || c.id.slice(0,8)}"?`)) onDelete(c.id); }}
-              className="opacity-0 group-hover:opacity-100 px-2 text-xs text-fg-dim hover:text-red-400 transition">×</button>
+              className="opacity-0 group-hover:opacity-100 px-2 text-xs text-fg-dim hover:text-danger transition"
+              aria-label="delete conversation">×</button>
           </div>
         ))}
       </div>
@@ -232,21 +285,29 @@ function Sidebar({ conversations, cid, onLoad, onNew, onDelete, panel, onPanel }
   );
 }
 
-function Pill({ children }: { children: React.ReactNode }) {
-  return <div className="bg-ink-800 border border-ink-600 rounded-lg px-2 py-1 text-sm">{children}</div>;
+function Pill({ children, label }: { children: React.ReactNode; label?: string }) {
+  return (
+    <div className="bg-ink-800 border border-ink-700 hover:border-ink-600 rounded-lg px-2.5 py-1 text-sm transition flex items-center gap-1.5">
+      {label && <span className="text-[10px] uppercase tracking-[0.1em] text-fg-dim font-mono">{label}</span>}
+      {children}
+      <span className="text-fg-dim text-[10px]" aria-hidden>▾</span>
+    </div>
+  );
 }
 
 function Toggle({ label, value, on, danger }: { label: string; value: boolean; on: () => void; danger?: boolean }) {
   return (
     <button onClick={on}
-      className={`px-2.5 py-1 rounded-lg text-xs border transition ${
+      aria-pressed={value}
+      className={`px-2.5 py-1 rounded-lg text-xs border transition flex items-center gap-1.5 ${
         value
           ? danger
-            ? "bg-red-500/20 border-red-500/50 text-red-200"
-            : "bg-accent/20 border-accent/50 text-accent-soft"
-          : "border-ink-700 text-fg-dim hover:text-fg"
+            ? "bg-danger/15 border-danger/40 text-danger-soft"
+            : "bg-accent/15 border-accent/40 text-accent-soft"
+          : "border-ink-700 text-fg-mute hover:text-fg hover:border-ink-600"
       }`}>
-      {value ? "● " : "○ "}{label}
+      <span className={`w-1.5 h-1.5 rounded-full transition ${value ? (danger ? "bg-danger" : "bg-accent") : "bg-ink-600"}`} aria-hidden />
+      {label}
     </button>
   );
 }
@@ -300,9 +361,9 @@ function AgentBubble({ item, verbose }: { item: Extract<ChatItem, { kind: "agent
     <div className="flex justify-start">
       <div className="max-w-[92%] w-full rounded-2xl px-4 py-3 bg-ink-800/60 border border-ink-700 space-y-3">
         <div className="text-xs text-accent-soft uppercase tracking-wider">agent run</div>
-        {error && <div className="text-red-400 text-sm">⚠ {error.error}</div>}
+        {error && <div className="text-danger text-sm">⚠ {error.error}</div>}
         {warnings.map((w, i) => (
-          <div key={i} className="text-xs text-amber-400">⚠ {w.stage}: {w.error}</div>
+          <div key={i} className="text-xs text-warn">⚠ {w.stage}: {w.error}</div>
         ))}
 
         {reframe && verbose && <ReframeCard rf={reframe.reframe} />}
@@ -340,7 +401,7 @@ function ReframeCard({ rf }: { rf: any }) {
     <div className="rounded-lg bg-ink-900/70 border border-ink-700 p-3">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xs uppercase tracking-wider text-fg-dim">reframe</span>
-        <span className={`text-xs px-2 py-0.5 rounded ${rf.ambiguity >= 4 ? "bg-amber-900/40 text-amber-300" : "bg-ink-700 text-fg-mute"}`}>
+        <span className={`text-xs px-2 py-0.5 rounded ${rf.ambiguity >= 4 ? "bg-warn/15 text-warn-soft" : "bg-ink-700 text-fg-mute"}`}>
           ambiguity {rf.ambiguity}/5
         </span>
       </div>
@@ -356,13 +417,13 @@ function ReframeCard({ rf }: { rf: any }) {
 
 function ClarificationCard({ c }: { c: any }) {
   return (
-    <div className="rounded-lg border border-amber-700/50 bg-amber-950/20 p-3">
-      <div className="text-xs uppercase tracking-wider text-amber-400 mb-1">clarification needed (ambiguity {c.ambiguity}/5)</div>
-      <div className="text-sm text-amber-100 font-medium">{c.question}</div>
+    <div className="rounded-lg border border-warn/30 bg-warn/5 p-3">
+      <div className="text-xs uppercase tracking-wider text-warn mb-1">clarification needed (ambiguity {c.ambiguity}/5)</div>
+      <div className="text-sm text-warn-soft font-medium">{c.question}</div>
       {c.assumptions?.length > 0 && (
         <details className="mt-2">
-          <summary className="text-xs text-amber-300/70 cursor-pointer">assumptions I'd otherwise make</summary>
-          <ul className="text-xs text-amber-200/80 mt-1 list-disc pl-5">
+          <summary className="text-xs text-warn-soft/70 cursor-pointer">assumptions I'd otherwise make</summary>
+          <ul className="text-xs text-warn-soft/80 mt-1 list-disc pl-5">
             {c.assumptions.map((a: string, i: number) => <li key={i}>{a}</li>)}
           </ul>
         </details>
@@ -374,16 +435,16 @@ function ClarificationCard({ c }: { c: any }) {
 function CritiqueCard({ crit }: { crit: any }) {
   if (!crit.issues?.length) {
     return (
-      <div className="rounded-lg bg-emerald-950/20 border border-emerald-700/40 p-2 text-xs text-emerald-300">
+      <div className="rounded-lg bg-ok/5 border border-ok/30 p-2 text-xs text-ok-soft">
         ✓ critique: plan looks clean — {crit.summary || "no issues"}
       </div>
     );
   }
   return (
-    <div className={`rounded-lg p-3 border ${crit.verdict === "revise" ? "border-amber-700/50 bg-amber-950/20" : "border-ink-700 bg-ink-900/40"}`}>
+    <div className={`rounded-lg p-3 border ${crit.verdict === "revise" ? "border-warn/30 bg-warn/5" : "border-ink-700 bg-ink-900/40"}`}>
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xs uppercase tracking-wider text-fg-mute">critique</span>
-        <span className={`text-xs px-2 py-0.5 rounded ${crit.verdict === "revise" ? "bg-amber-900/40 text-amber-300" : "bg-ink-700 text-fg-mute"}`}>
+        <span className={`text-xs px-2 py-0.5 rounded ${crit.verdict === "revise" ? "bg-warn/15 text-warn-soft" : "bg-ink-700 text-fg-mute"}`}>
           {crit.verdict}
         </span>
       </div>
@@ -391,8 +452,8 @@ function CritiqueCard({ crit }: { crit: any }) {
         {crit.issues.map((iss: any, i: number) => (
           <li key={i} className="flex gap-2">
             <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded mt-0.5 ${
-              iss.severity === "high" ? "bg-red-900/40 text-red-300" :
-              iss.severity === "medium" ? "bg-amber-900/40 text-amber-300" :
+              iss.severity === "high" ? "bg-danger/15 text-danger-soft" :
+              iss.severity === "medium" ? "bg-warn/15 text-warn-soft" :
               "bg-ink-700 text-fg-mute"}`}>{iss.severity}</span>
             <div className="flex-1">
               <div className="text-fg">{iss.concern}{iss.step != null && <span className="text-fg-dim text-xs"> (step {iss.step})</span>}</div>
@@ -407,8 +468,8 @@ function CritiqueCard({ crit }: { crit: any }) {
 
 function DoneCheckCard({ dc }: { dc: any }) {
   const tone = dc.overall === "complete" ? "emerald" : dc.overall === "partial" ? "amber" : "red";
-  const bg = { emerald: "bg-emerald-950/20 border-emerald-700/40", amber: "bg-amber-950/20 border-amber-700/50", red: "bg-red-950/20 border-red-700/50" }[tone];
-  const fg = { emerald: "text-emerald-300", amber: "text-amber-300", red: "text-red-300" }[tone];
+  const bg = { emerald: "bg-ok/5 border-ok/30", amber: "bg-warn/5 border-warn/30", red: "bg-danger/5 border-danger/30" }[tone];
+  const fg = { emerald: "text-ok-soft", amber: "text-warn-soft", red: "text-danger-soft" }[tone];
   return (
     <div className={`rounded-lg p-3 border ${bg}`}>
       <div className="flex items-center gap-2 mb-2">
@@ -418,7 +479,7 @@ function DoneCheckCard({ dc }: { dc: any }) {
       <ul className="space-y-1 text-sm">
         {dc.criteria?.map((c: any, i: number) => (
           <li key={i} className="flex gap-2">
-            <span className={c.met ? "text-emerald-400" : "text-red-400"}>{c.met ? "✓" : "✗"}</span>
+            <span className={c.met ? "text-ok" : "text-danger"}>{c.met ? "✓" : "✗"}</span>
             <div className="flex-1">
               <div className="text-fg">{c.description}</div>
               {c.evidence && <div className="text-xs text-fg-dim italic">{c.evidence}</div>}
@@ -464,13 +525,13 @@ function StepCard({ result }: { result: any }) {
   const ok = tr?.ok;
   return (
     <div className={`rounded-lg border p-3 ${
-      tr ? (ok ? "border-emerald-700/50 bg-emerald-950/20" : "border-red-700/50 bg-red-950/20") : "border-ink-700 bg-ink-900/40"
+      tr ? (ok ? "border-ok/30 bg-ok/5" : "border-danger/30 bg-danger/5") : "border-ink-700 bg-ink-900/40"
     }`}>
       <div className="flex items-center gap-2 text-sm">
         <span className="text-fg-dim">step {result.step.n}</span>
         <span className="text-fg">{result.step.description}</span>
         {result.step.tool && <span className="text-xs font-mono text-accent-soft">· {result.step.tool}</span>}
-        {tr && <span className={`text-xs ml-auto ${ok ? "text-emerald-400" : "text-red-400"}`}>{ok ? "✓" : "✗"}</span>}
+        {tr && <span className={`text-xs ml-auto ${ok ? "text-ok" : "text-danger"}`}>{ok ? "✓" : "✗"}</span>}
       </div>
       {tr && (tr.output || tr.error) && (
         <pre className="mt-2 text-xs font-mono text-fg bg-ink-950/60 rounded p-2 overflow-x-auto whitespace-pre-wrap max-h-64">
@@ -483,20 +544,39 @@ function StepCard({ result }: { result: any }) {
 }
 
 function Composer({ value, onChange, onSend, disabled, mode }: any) {
+  // Auto-grow up to ~6 rows. Enter sends; Shift+Enter inserts a newline.
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 168) + "px";
+  }, [value]);
   return (
     <div className="border-t border-ink-700 p-4 bg-ink-900/40 backdrop-blur">
-      <div className="max-w-3xl mx-auto flex gap-2">
-        <textarea value={value} onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }}
-          rows={1} placeholder={mode === "agent" ? "describe a goal…" : "message…"}
-          className="flex-1 resize-none bg-ink-800 border border-ink-600 focus:border-accent focus:outline-none rounded-xl px-4 py-3 text-[0.95rem] placeholder:text-fg-dim" />
-        <button onClick={onSend} disabled={disabled || !value.trim()}
-          className="px-5 rounded-xl bg-accent hover:bg-accent-soft disabled:opacity-40 disabled:cursor-not-allowed transition font-medium">
-          {mode === "agent" ? "run" : "send"}
-        </button>
+      <div className="max-w-3xl mx-auto">
+        <div className="flex gap-2 items-end">
+          <textarea ref={ref} value={value} onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }}
+            rows={1}
+            placeholder={mode === "agent" ? "describe a goal — the agent will plan, run tools, verify…" : "message…"}
+            className="flex-1 resize-none bg-ink-800 border border-ink-600 focus:border-accent focus:outline-none rounded-xl px-4 py-3 text-[0.95rem] placeholder:text-fg-dim leading-relaxed transition-all" />
+          <button onClick={onSend} disabled={disabled || !value.trim()}
+            className="px-5 py-3 rounded-xl bg-accent hover:bg-accent-soft disabled:cursor-not-allowed transition font-medium shadow-glow text-white">
+            {mode === "agent" ? "run" : "send"}
+          </button>
+        </div>
+        <div className="text-[10px] text-fg-dim mt-1.5 text-right font-mono">
+          <Kbd>⏎</Kbd> send · <Kbd>⇧⏎</Kbd> newline
+          {mode === "agent" && <> · <Kbd>auto-approve</Kbd> in header to skip prompts</>}
+        </div>
       </div>
     </div>
   );
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return <kbd className="inline-block px-1 py-px rounded bg-ink-800 border border-ink-700 text-fg-mute text-[10px] font-mono">{children}</kbd>;
 }
 
 function RagPanel() {
@@ -512,8 +592,15 @@ function RagPanel() {
   return (
     <div className="flex-1 overflow-y-auto px-6 py-6">
       <div className="max-w-3xl mx-auto space-y-6">
-        <h2 className="text-xl font-semibold">RAG library</h2>
-        <div className="grid grid-cols-2 gap-4">
+        <header className="flex items-baseline gap-3">
+          <h2 className="text-2xl font-semibold tracking-tight">RAG library</h2>
+          {docs.length > 0 && (
+            <span className="text-xs text-fg-mute font-mono tabular-nums">{docs.length} document{docs.length === 1 ? "" : "s"}</span>
+          )}
+          <div className="flex-1" />
+          <span className="text-xs text-fg-dim">Inject top-k hits per chat turn with <kbd className="px-1 py-px rounded bg-ink-800 border border-ink-700 font-mono text-[10px]">--rag</kbd></span>
+        </header>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card title="ingest path (file or folder)">
             <Row v={path} setV={setPath} ph="C:\path\to\docs" busy={busy} on={() => go(async () => { await api.ingest({ path }); setPath(""); })} />
           </Card>
@@ -521,16 +608,24 @@ function RagPanel() {
             <Row v={url} setV={setUrl} ph="https://…" busy={busy} on={() => go(async () => { await api.ingest({ url }); setUrl(""); })} />
           </Card>
         </div>
-        <div className="bg-ink-800/60 border border-ink-700 rounded-xl divide-y divide-ink-700">
-          {docs.length === 0 && <div className="p-6 text-center text-fg-dim">no documents yet.</div>}
+        <div className="bg-ink-800/40 border border-ink-700 rounded-xl divide-y divide-ink-700 overflow-hidden">
+          {docs.length === 0 && (
+            <div className="p-10 text-center">
+              <div className="text-3xl text-fg-dim mb-2" aria-hidden>📚</div>
+              <div className="text-sm text-fg-mute">No documents yet.</div>
+              <div className="text-xs text-fg-dim mt-1">Ingest a folder, file, or URL above — chunks will be embedded and queryable.</div>
+            </div>
+          )}
           {docs.map((d) => (
-            <div key={d.id} className="flex items-center px-4 py-3 gap-3">
-              <span className="text-xs px-2 py-0.5 rounded bg-ink-700 uppercase tracking-wide">{d.kind}</span>
+            <div key={d.id} className="flex items-center px-4 py-3 gap-3 hover:bg-ink-800/40 transition group">
+              <span className="text-[10px] px-2 py-0.5 rounded bg-ink-700 text-fg-mute uppercase tracking-[0.08em] font-mono">{d.kind}</span>
               <div className="flex-1 truncate">
-                <div className="text-sm">{d.title || d.source}</div>
-                <div className="text-xs text-fg-dim truncate">{d.source}</div>
+                <div className="text-sm text-fg">{d.title || d.source}</div>
+                <div className="text-xs text-fg-dim truncate font-mono">{d.source}</div>
               </div>
-              <button onClick={async () => { await api.deleteDoc(d.id); refresh(); }} className="text-xs text-fg-dim hover:text-red-400">delete</button>
+              <button onClick={async () => { if (confirm(`delete this document?`)) { await api.deleteDoc(d.id); refresh(); } }}
+                className="text-xs text-fg-dim hover:text-danger opacity-0 group-hover:opacity-100 transition"
+                aria-label="delete">delete</button>
             </div>
           ))}
         </div>
@@ -549,28 +644,47 @@ function MemoryPanel() {
   return (
     <div className="flex-1 overflow-y-auto px-6 py-6">
       <div className="max-w-3xl mx-auto space-y-6">
-        <h2 className="text-xl font-semibold">long-term memory</h2>
-        <div className="bg-ink-800/60 border border-ink-700 rounded-xl p-4 space-y-2">
+        <header className="flex items-baseline gap-3">
+          <h2 className="text-2xl font-semibold tracking-tight">Long-term memory</h2>
+          {mems.length > 0 && (
+            <span className="text-xs text-fg-mute font-mono tabular-nums">{mems.length} item{mems.length === 1 ? "" : "s"}</span>
+          )}
+          <div className="flex-1" />
+          <span className="text-xs text-fg-dim">Auto-recalled per chat turn · cosine-deduped on save</span>
+        </header>
+        <div className="bg-ink-800/40 border border-ink-700 rounded-xl p-4 space-y-3">
           <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)}
-            placeholder="a durable fact about you, the project, or a preference…"
-            className="w-full bg-ink-900 border border-ink-600 rounded-lg px-3 py-2 text-sm" />
-          <div className="flex gap-2">
-            <select value={kind} onChange={(e) => setKind(e.target.value)} className="bg-ink-900 border border-ink-600 rounded-lg px-2 py-1 text-sm">
+            placeholder="A durable fact about you, the project, or a preference…"
+            className="w-full bg-ink-900 border border-ink-600 focus:border-accent focus:outline-none rounded-lg px-3 py-2 text-sm placeholder:text-fg-dim transition" />
+          <div className="flex gap-2 items-center">
+            <span className="text-[10px] uppercase tracking-[0.12em] text-fg-dim">kind</span>
+            <select value={kind} onChange={(e) => setKind(e.target.value)}
+              className="bg-ink-900 border border-ink-600 hover:border-ink-500 focus:border-accent focus:outline-none rounded-lg pl-3 pr-7 py-1.5 text-sm appearance-none cursor-pointer transition bg-no-repeat bg-right"
+              style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23a1a1aa' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>\")", backgroundPosition: "right 0.5rem center" }}>
               <option value="fact">fact</option><option value="user">user</option>
               <option value="project">project</option><option value="preference">preference</option>
             </select>
+            <div className="flex-1" />
             <button disabled={busy || !text.trim()}
               onClick={async () => { setBusy(true); try { await api.addMemory(text, kind); setText(""); await refresh(); } finally { setBusy(false); } }}
-              className="px-3 rounded-lg bg-accent hover:bg-accent-soft disabled:opacity-40 text-sm">remember</button>
+              className="px-4 py-1.5 rounded-lg bg-accent hover:bg-accent-soft text-white text-sm shadow-glow transition">remember</button>
           </div>
         </div>
-        <div className="bg-ink-800/60 border border-ink-700 rounded-xl divide-y divide-ink-700">
-          {mems.length === 0 && <div className="p-6 text-center text-fg-dim">no memories yet.</div>}
+        <div className="bg-ink-800/40 border border-ink-700 rounded-xl divide-y divide-ink-700 overflow-hidden">
+          {mems.length === 0 && (
+            <div className="p-10 text-center">
+              <div className="text-3xl text-fg-dim mb-2" aria-hidden>🧠</div>
+              <div className="text-sm text-fg-mute">No memories yet.</div>
+              <div className="text-xs text-fg-dim mt-1">Add one above, or let the auto-extractor pull them from chats.</div>
+            </div>
+          )}
           {mems.map((m) => (
-            <div key={m.id} className="flex items-start px-4 py-3 gap-3">
-              <span className="text-xs px-2 py-0.5 rounded bg-ink-700 uppercase tracking-wide mt-0.5">{m.kind}</span>
-              <div className="flex-1 text-sm text-fg">{m.text}</div>
-              <button onClick={async () => { await api.deleteMemory(m.id); refresh(); }} className="text-xs text-fg-dim hover:text-red-400">forget</button>
+            <div key={m.id} className="flex items-start px-4 py-3 gap-3 hover:bg-ink-800/40 transition group">
+              <span className="text-[10px] px-2 py-0.5 rounded bg-ink-700 text-fg-mute uppercase tracking-[0.08em] font-mono mt-0.5">{m.kind}</span>
+              <div className="flex-1 text-sm text-fg leading-relaxed">{m.text}</div>
+              <button onClick={async () => { if (confirm("forget this?")) { await api.deleteMemory(m.id); refresh(); } }}
+                className="text-xs text-fg-dim hover:text-danger opacity-0 group-hover:opacity-100 transition shrink-0"
+                aria-label="forget">forget</button>
             </div>
           ))}
         </div>
@@ -598,41 +712,57 @@ function StrategyPanel() {
     refresh();
   }
 
+  const activeCount = items.filter((s) => s.active).length;
   return (
     <div className="flex-1 overflow-y-auto px-6 py-6">
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold">strategies</h2>
-          <span className="text-sm text-fg-dim">master-context blocks injected into agent system prompts</span>
+        <header className="flex items-baseline gap-3 flex-wrap">
+          <h2 className="text-2xl font-semibold tracking-tight">Strategies</h2>
+          {items.length > 0 && (
+            <span className="text-xs text-fg-mute font-mono tabular-nums">
+              <span className="text-ok">{activeCount}</span>
+              <span className="text-fg-dim">/</span>
+              <span>{items.length} active</span>
+            </span>
+          )}
           <div className="flex-1" />
+          <span className="text-xs text-fg-dim hidden md:block">Scoped master-context blocks injected into agent system prompts</span>
           <button onClick={() => setEditing(blank())}
-            className="px-3 py-1.5 rounded-lg bg-accent hover:bg-accent-soft text-sm">+ new</button>
-        </div>
+            className="px-3 py-1.5 rounded-lg bg-accent hover:bg-accent-soft text-white text-sm shadow-glow transition">+ new</button>
+        </header>
 
         <div className="grid grid-cols-1 gap-3">
-          {items.length === 0 && <div className="p-8 text-center text-fg-dim border border-ink-700 rounded-xl">no strategies.</div>}
+          {items.length === 0 && (
+            <div className="p-10 text-center border border-ink-700 rounded-xl">
+              <div className="text-3xl text-fg-dim mb-2" aria-hidden>📜</div>
+              <div className="text-sm text-fg-mute">No strategies.</div>
+              <div className="text-xs text-fg-dim mt-1">Seed strategies will appear here on first run, or click <span className="text-accent-soft">+ new</span>.</div>
+            </div>
+          )}
           {items.map((s) => (
-            <div key={s.id} className={`rounded-xl border p-4 ${s.active ? "border-accent/40 bg-accent/5" : "border-ink-700 bg-ink-800/40"}`}>
+            <div key={s.id} className={`rounded-xl border p-4 transition ${s.active ? "border-accent/40 bg-accent/5" : "border-ink-700 bg-ink-800/40"}`}>
               <div className="flex items-start gap-3">
                 <button onClick={async () => { await api.setStrategyActive(s.id, !s.active); refresh(); }}
-                  className={`mt-1 w-10 h-5 rounded-full transition ${s.active ? "bg-accent" : "bg-ink-600"}`}>
-                  <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition ${s.active ? "ml-5" : "ml-0.5"}`} />
+                  className={`mt-1 w-10 h-5 rounded-full relative transition shrink-0 ${s.active ? "bg-accent" : "bg-ink-600"}`}
+                  aria-label={s.active ? "deactivate strategy" : "activate strategy"}
+                  aria-pressed={s.active}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${s.active ? "left-5" : "left-0.5"}`} />
                 </button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <div className="font-semibold">{s.name}</div>
-                    <code className="text-xs text-fg-dim">{s.id}</code>
+                    <div className="font-semibold text-fg">{s.name}</div>
+                    <code className="text-[10px] text-fg-dim font-mono">{s.id}</code>
                     {s.scopes.map((sc) => (
-                      <span key={sc} className="text-[10px] px-1.5 py-0.5 rounded bg-ink-700 uppercase tracking-wide">{sc}</span>
+                      <span key={sc} className="text-[10px] px-1.5 py-0.5 rounded bg-ink-700 text-fg-mute uppercase tracking-[0.08em] font-mono">{sc}</span>
                     ))}
                   </div>
-                  {s.description && <div className="text-sm text-fg-mute mt-1">{s.description}</div>}
-                  <pre className="mt-2 text-xs text-fg whitespace-pre-wrap font-mono bg-ink-950/40 rounded p-2 max-h-32 overflow-y-auto">{s.body}</pre>
+                  {s.description && <div className="text-sm text-fg-mute mt-1 leading-relaxed">{s.description}</div>}
+                  <pre className="mt-2 text-xs text-fg-mute whitespace-pre-wrap font-mono bg-ink-950/40 border border-ink-700 rounded-lg p-2.5 max-h-32 overflow-y-auto">{s.body}</pre>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <button onClick={() => setEditing(s)} className="text-xs text-accent-soft hover:text-fg">edit</button>
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  <button onClick={() => setEditing(s)} className="text-xs text-accent-soft hover:text-fg transition">edit</button>
                   <button onClick={async () => { if (confirm(`delete ${s.id}?`)) { await api.deleteStrategy(s.id); refresh(); } }}
-                    className="text-xs text-fg-dim hover:text-red-400">delete</button>
+                    className="text-xs text-fg-dim hover:text-danger transition">delete</button>
                 </div>
               </div>
             </div>
@@ -641,39 +771,57 @@ function StrategyPanel() {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditing(null)}>
-          <div className="bg-ink-900 border border-ink-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-5 space-y-3">
-              <div className="text-lg font-semibold">{editing.id ? `edit · ${editing.id}` : "new strategy"}</div>
-              <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                placeholder="name" className="w-full bg-ink-800 border border-ink-600 rounded-lg px-3 py-2" />
-              <input value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-                placeholder="description" className="w-full bg-ink-800 border border-ink-600 rounded-lg px-3 py-2 text-sm" />
-              <div className="flex gap-2 flex-wrap">
-                <span className="text-sm text-fg-mute self-center">scopes:</span>
-                {scopes.map((sc) => {
-                  const on = editing.scopes.includes(sc);
-                  return (
-                    <button key={sc} onClick={() => {
-                      const next = on ? editing.scopes.filter((x) => x !== sc) : [...editing.scopes, sc];
-                      setEditing({ ...editing, scopes: next.length ? next : ["all"] });
-                    }} className={`px-2 py-1 rounded text-xs border ${on ? "bg-accent/20 border-accent text-accent-soft" : "border-ink-700 text-fg-mute"}`}>
-                      {sc}
-                    </button>
-                  );
-                })}
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-slide-up" onClick={() => setEditing(null)}>
+          <div className="bg-ink-900 border border-ink-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-glow-strong" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") setEditing(null); }}>
+            <div className="p-5 space-y-4">
+              <div className="flex items-baseline gap-2">
+                <div className="text-lg font-semibold tracking-tight">{editing.id ? "Edit strategy" : "New strategy"}</div>
+                {editing.id && <code className="text-[11px] font-mono text-fg-dim">{editing.id}</code>}
               </div>
-              <textarea value={editing.body} onChange={(e) => setEditing({ ...editing, body: e.target.value })}
-                placeholder="body — the actual master context injected into the system prompt"
-                rows={14} className="w-full bg-ink-800 border border-ink-600 rounded-lg px-3 py-2 font-mono text-sm" />
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={editing.active} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} />
-                active
+              <Field label="name">
+                <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                  placeholder="e.g. Verify Before Claim"
+                  className="w-full bg-ink-800 border border-ink-600 focus:border-accent focus:outline-none rounded-lg px-3 py-2 transition" />
+              </Field>
+              <Field label="description">
+                <input value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+                  placeholder="One-line summary"
+                  className="w-full bg-ink-800 border border-ink-600 focus:border-accent focus:outline-none rounded-lg px-3 py-2 text-sm transition" />
+              </Field>
+              <Field label="scopes" hint="which agent roles get this strategy injected">
+                <div className="flex gap-1.5 flex-wrap">
+                  {scopes.map((sc) => {
+                    const on = editing.scopes.includes(sc);
+                    return (
+                      <button key={sc} onClick={() => {
+                        const next = on ? editing.scopes.filter((x) => x !== sc) : [...editing.scopes, sc];
+                        setEditing({ ...editing, scopes: next.length ? next : ["all"] });
+                      }} className={`px-2.5 py-1 rounded-lg text-xs border font-mono uppercase tracking-[0.08em] transition ${
+                        on ? "bg-accent/20 border-accent/50 text-accent-soft" : "border-ink-700 text-fg-mute hover:border-accent/30"
+                      }`} aria-pressed={on}>
+                        {sc}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Field>
+              <Field label="body" hint="the master-context block, in markdown">
+                <textarea value={editing.body} onChange={(e) => setEditing({ ...editing, body: e.target.value })}
+                  placeholder="The actual instructions injected into the system prompt…"
+                  rows={14} className="w-full bg-ink-900 border border-ink-600 focus:border-accent focus:outline-none rounded-lg px-3 py-2 font-mono text-sm leading-relaxed transition" />
+              </Field>
+              <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                <input type="checkbox" checked={editing.active} onChange={(e) => setEditing({ ...editing, active: e.target.checked })}
+                  className="accent-accent" />
+                <span>active — apply this strategy on relevant scopes</span>
               </label>
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-2 border-t border-ink-700">
+                <span className="text-[10px] text-fg-dim self-center">
+                  <Kbd>esc</Kbd> close
+                </span>
                 <div className="flex-1" />
-                <button onClick={() => setEditing(null)} className="px-4 py-2 rounded-lg border border-ink-700 hover:bg-ink-800 text-sm">cancel</button>
-                <button onClick={save} disabled={!editing.name.trim()} className="px-4 py-2 rounded-lg bg-accent hover:bg-accent-soft disabled:opacity-40 text-sm">save</button>
+                <button onClick={() => setEditing(null)} className="px-4 py-2 rounded-lg border border-ink-700 hover:bg-ink-800 text-fg-mute hover:text-fg text-sm transition">cancel</button>
+                <button onClick={save} disabled={!editing.name.trim()} className="px-4 py-2 rounded-lg bg-accent hover:bg-accent-soft text-white text-sm shadow-glow transition">save</button>
               </div>
             </div>
           </div>
@@ -717,8 +865,8 @@ function SettingsPanel() {
               Is the LocalAgent server running? Try <code className="font-mono text-fg-mute">localagent serve</code>.
             </div>
             <button onClick={() => { setErr(null); load().catch((e) => setErr(String(e.message || e))); }}
-              className="mt-2 px-3 py-1.5 rounded-lg text-sm border border-ink-700 hover:border-accent text-fg-mute hover:text-fg transition">
-              ↻ retry
+              className="mt-3 px-4 py-1.5 rounded-lg text-sm bg-accent hover:bg-accent-soft text-white shadow-glow transition inline-flex items-center gap-1.5">
+              <span aria-hidden>↻</span> retry
             </button>
           </div>
         </div>
@@ -788,13 +936,13 @@ function SettingsPanel() {
           <h2 className="text-xl font-semibold">settings</h2>
           <span className="text-xs text-fg-dim font-mono truncate" title={path}>{path}</span>
           <div className="flex-1" />
-          {savedAt && !dirty && <span className="text-xs text-emerald-400">saved</span>}
+          {savedAt && !dirty && <span className="text-xs text-ok">saved</span>}
           <button onClick={reset} disabled={!dirty || saving}
             className="px-3 py-1.5 rounded-lg text-sm border border-ink-700 hover:bg-ink-800 disabled:opacity-30">reset</button>
           <button onClick={save} disabled={!dirty || saving}
             className="px-3 py-1.5 rounded-lg text-sm bg-accent hover:bg-accent-soft disabled:opacity-40 text-white">{saving ? "saving…" : "save"}</button>
         </div>
-        {err && <div className="rounded-lg border border-red-700/50 bg-red-950/30 text-red-300 text-sm px-3 py-2">{err}</div>}
+        {err && <div className="rounded-lg border border-danger/30 bg-danger/10 text-danger-soft text-sm px-3 py-2">{err}</div>}
 
         <Section title="agent · meta-cognition">
           <Bool path={["agent", "use_reframe"]} draft={draft} set={patch} label="use reframe" hint="restate goal + assumptions before planning" />
@@ -877,7 +1025,7 @@ function Bool({ path, draft, set, label, hint, danger }: any) {
   return (
     <Field label={label} hint={hint}>
       <button onClick={() => set(path, !v)}
-        className={`w-12 h-6 rounded-full transition relative ${v ? (danger ? "bg-red-500" : "bg-accent") : "bg-ink-600"}`}>
+        className={`w-12 h-6 rounded-full transition relative ${v ? (danger ? "bg-danger" : "bg-accent") : "bg-ink-600"}`}>
         <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${v ? "left-6" : "left-0.5"}`} />
       </button>
     </Field>
@@ -937,7 +1085,7 @@ function Tags({ path, draft, set, label, hint }: any) {
         {v.map((t, i) => (
           <span key={i} className="text-xs px-2 py-1 rounded bg-ink-700 text-fg flex items-center gap-1">
             {t}
-            <button onClick={() => set(path, v.filter((_, j) => j !== i))} className="text-fg-dim hover:text-red-400">×</button>
+            <button onClick={() => set(path, v.filter((_, j) => j !== i))} className="text-fg-dim hover:text-danger">×</button>
           </span>
         ))}
         <input value={input} onChange={(e) => setInput(e.target.value)}
@@ -966,8 +1114,10 @@ function Row({ v, setV, ph, busy, on }: any) {
   return (
     <div className="flex gap-2">
       <input value={v} onChange={(e) => setV(e.target.value)} placeholder={ph}
-        className="flex-1 bg-ink-900 border border-ink-600 rounded-lg px-3 py-2 text-sm" />
-      <button onClick={on} disabled={busy} className="px-3 rounded-lg bg-accent hover:bg-accent-soft disabled:opacity-40 text-sm">add</button>
+        onKeyDown={(e) => { if (e.key === "Enter" && v?.trim()) on(); }}
+        className="flex-1 bg-ink-900 border border-ink-600 hover:border-ink-500 focus:border-accent focus:outline-none rounded-lg px-3 py-2 text-sm placeholder:text-fg-dim transition" />
+      <button onClick={on} disabled={busy || !v?.trim()}
+        className="px-4 rounded-lg bg-accent hover:bg-accent-soft text-white text-sm shadow-glow transition">add</button>
     </div>
   );
 }
